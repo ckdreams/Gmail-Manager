@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 function App() {
   const [query, setQuery] = useState('subject:unsubscribe');
   const [message, setMessage] = useState('');
+  const [nextBatchTime, setNextBatchTime] = useState(null);
 
   const deleteEmails = async () => {
     try {
@@ -13,8 +14,17 @@ function App() {
         },
         body: JSON.stringify({ query }),
       });
+
       const data = await response.json();
       setMessage(data.message);
+
+      // Check if the message contains next batch time info
+      if (data.message.includes('Next batch at')) {
+        const time = data.message.match(/\d{1,2}:\d{2}:\d{2} [APM]{2}/);
+        if (time) {
+          setNextBatchTime(time[0]);
+        }
+      }
     } catch (error) {
       console.error('Error deleting emails:', error);
       setMessage('Error deleting emails');
@@ -35,6 +45,7 @@ function App() {
         Delete Emails
       </button>
       {message && <p>{message}</p>}
+      {nextBatchTime && <p>Next batch deletion avaiable at: {nextBatchTime}</p>}
     </div>
   );
 }
