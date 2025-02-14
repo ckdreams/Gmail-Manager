@@ -3,9 +3,13 @@ import React, { useState } from 'react';
 function App() {
   const [query, setQuery] = useState('subject:unsubscribe');
   const [message, setMessage] = useState('');
+  const [deletedEmails, setDeletedEmails] = useState([]);
   const [nextBatchTime, setNextBatchTime] = useState(null);
 
   const deleteEmails = async () => {
+    setDeletedEmails([]); // Reset previous session data
+    setMessage("Deleting emails...");
+
     try {
       const response = await fetch('http://localhost:3001/delete-emails', {
         method: 'POST',
@@ -17,6 +21,10 @@ function App() {
 
       const data = await response.json();
       setMessage(data.message);
+
+      if (data.deletedEmails) {
+        setDeletedEmails(data.deletedEmails);
+      }
 
       // Check if the message contains next batch time info
       if (data.message.includes('Next batch at')) {
@@ -46,6 +54,17 @@ function App() {
       </button>
       {message && <p>{message}</p>}
       {nextBatchTime && <p>Next batch deletion avaiable at: {nextBatchTime}</p>}
+
+      {deletedEmails.length > 0 && (
+        <div>
+          <h3>Deleted Emails ({deletedEmails.length}):</h3>
+          <ul>
+            {deletedEmails.map((emailId, index) => (
+              <li key={index}>{emailId}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
