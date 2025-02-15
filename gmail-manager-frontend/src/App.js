@@ -6,17 +6,17 @@ function App() {
   const [deletedEmails, setDeletedEmails] = useState([]);
   const [nextBatchTime, setNextBatchTime] = useState(null);
 
-  const deleteEmails = async () => {
+  const deleteEmails = async (endpoint) => {
     setDeletedEmails([]); // Reset previous session data
     setMessage("Deleting emails...");
 
     try {
-      const response = await fetch('http://localhost:3001/delete-emails', {
+      const response = await fetch(`http://localhost:3001/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify(endpoint === 'delete-emails' ? { query } : {}),
       });
 
       const data = await response.json();
@@ -52,6 +52,10 @@ function App() {
       <button onClick={deleteEmails} style={{ marginLeft: '1rem' }}>
         Delete Emails
       </button>
+      <button onClick={() => deleteEmails('delete-promotions')} style={{ marginLeft: '1rem', backgroundColor: 'red', color: 'white' }}>
+        Delete Promotions Emails
+      </button>
+      
       {message && <p>{message}</p>}
       {nextBatchTime && <p>Next batch deletion avaiable at: {nextBatchTime}</p>}
 

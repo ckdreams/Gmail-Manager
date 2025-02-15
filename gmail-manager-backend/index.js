@@ -19,7 +19,7 @@ oauth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
 const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 let lastDeletionTime = 0; // Store last deletion timestamp
-const maxDeletesPerHour = 50; // Adjust based on observed quota behavior
+const maxDeletesPerHour = 100; // Adjust based on observed quota behavior
 let deletedEmailsCount = 0;
 
 // Function to delete emails in batches with delay
@@ -88,6 +88,38 @@ app.post('/delete-emails', async (req, res) => {
     } catch (error) {
         console.error('❌ Error during email deletion process:', error);
         res.status(500).json({ error: 'Error deleting emails' });
+    }
+});
+
+// Route to delete only "Promotions" emails
+app.post('/delete-promotions', async (req, res) => {
+    console.log(`🔍 Received request to delete Promotions emails`);
+
+    const currentTime = Date.now();
+    if (currentTime - lastDeletionTime < 3600000 && deletedEmailsCount >= maxDeletesPerHour) {
+        const nextAvailableTime = new Date(lastDeletionTime + 3600000).toLocaleTimeString();
+        console.log(`⏳ Rate limit exceeded. Next batch at ${nextAvailableTime}.`);
+        return res.json({ message: `Rate limit exceeded. Next batch at ${nextAvailableTime}.`});
+    }
+
+    try {
+        // Query to fetch only "Promotions" emails
+        const query = 'category:promotions';
+        const listResponse = await gmail.users.messages.list({ userId: 'me', q: query });
+
+        if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
+            console.log(`📭 No Promotions emails found.`);
+            return res.json({ message: 'No Promotions emails found.' });
+        }
+
+        console.log(`📋 Found ${listResponse.data.messages.length} Promotions emails. Deleting...`);
+        const deletionResult = await deleteEmails(listResponse.data.messages);
+
+        lastDeletionTime = Date.now();
+        res.json(deletionResult);
+    } catch (error) {
+        console.error('❌ Error deleting Promotions emails:', error);
+        res.status(500).json({ error: 'Error deleting Promotions emails' });
     }
 });
 
