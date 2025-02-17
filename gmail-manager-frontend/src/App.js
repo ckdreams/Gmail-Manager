@@ -1,10 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:3001", {
+    transports: ["websocket"], // Ensure WebSocket is used instead of polling
+    reconnectionAttempts: 5, // Retry connection
+});
 
 function App() {
   const [query, setQuery] = useState('subject:unsubscribe');
   const [message, setMessage] = useState('');
   const [deletedEmails, setDeletedEmails] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    socket.on("emailDeleted", (data) => {
+      console.log(`📥 Received emailDeleted event for ID: ${data.id}`);
+      setDeletedEmails(prevEmails => [...prevEmails, data.id]);
+    });
+
+    socket.on("deletionStopped", (data) => {
+      console.log("🛑 Received deletionStopped event");
+      setMessage(data.message);
+      setIsDeleting(false);
+    });
+
+    return () => {
+      socket.off("emailDeleted");
+      socket.off("deletionStopped");
+    };
+  }, []);
 
   const deleteEmails = async (endpoint) => {
     setDeletedEmails([]); // Reset previous session data
@@ -84,7 +108,9 @@ function App() {
           <h3>Deleted Emails ({deletedEmails.length}):</h3>
           <ul>
             {deletedEmails.map((emailId, index) => (
-              <li key={index}>{emailId}</li>
+              <li key={index} style={{ color: 'green', fontWeight: 'bold' }}>
+                ✅ {emailId}
+              </li>
             ))}
           </ul>
         </div>

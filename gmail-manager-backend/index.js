@@ -1,9 +1,19 @@
 const express = require('express');
 const { google } = require('googleapis');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"]
+    }
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -43,6 +53,10 @@ async function deleteEmails(messages) {
             deletedEmails.push(messages[i].id);
 
             console.log(`✅ Deleted email ID: ${messages[i].id} (Total: ${deletedEmailsCount})`);
+
+            // Emit the deleted email ID to the frontend
+            console.log(`📡 Emitting emailDeleted event for ID: ${messages[i].id}`);
+            io.emit("emailDeleted", { id: messages[i].id });
 
             // Delay between requests to avoid rate limits (500ms per request)
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -151,9 +165,10 @@ app.post('/delete-promotions', async (req, res) => {
 app.post('/stop-deletion', (req, res) => {
     deletionInProgress = false;
     console.log("❌ Deletion has been stopped by the users.");
+    io.emit("deletionStopped", { message: "Deletion process stopped." });
     res.json({ message: "Deletion process stopped." });
 });
 
 // Start the server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
