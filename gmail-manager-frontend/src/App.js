@@ -18,6 +18,11 @@ function App() {
       setDeletedEmails(prevEmails => [...prevEmails, data.id]);
     });
 
+    socket.on("emailDeletedBatch", (data) => {
+      console.log(`Received batch deletion event: ${data.count} emails deleted.`);
+      setDeletedEmails(prevEmails => [...prevEmails, `Batch of ${data.count} emails deleted. Total: ${data.total}`]);
+    })
+
     socket.on("deletionStopped", (data) => {
       console.log("🛑 Received deletionStopped event");
       setMessage(data.message);
@@ -26,6 +31,7 @@ function App() {
 
     return () => {
       socket.off("emailDeleted");
+      socket.off("emailDeletedBatch");
       socket.off("deletionStopped");
     };
   }, []);
