@@ -31,7 +31,7 @@ const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 let lastDeletionTime = 0; // Store last deletion timestamp
 const maxDeletesPerHour = 150; // Adjust based on observed quota behavior
 const BATCH_SIZE = 20; // Number of emails to delete per batch
-let deletedEmailsCount = 0;
+let totalDeletedEmails = 0; // Keep count persistent across deletions
 let deletionInProgress = false; // Track ongoing deletion operation
 
 // Function to delete emails in batches with delay
@@ -57,10 +57,11 @@ async function deleteEmails(messages) {
             })));
 
             deletedEmails.push(...batchIds);
+            totalDeletedEmails += batch.length; // Accumulate deleted count
             console.log(`✅ Deleted ${batch.length} emails (Total: ${deletedEmails.length})`);
 
             // Emit the deleted email count to the frontend
-            io.emit("emailDeletedBatch", { count: batch.length, total: deletedEmails.length });
+            io.emit("emailDeletedBatch", { count: batch.length, total: totalDeletedEmails });
 
             // Delay between requests to avoid rate limits (500ms per request)
             await new Promise(resolve => setTimeout(resolve, 500));

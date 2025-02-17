@@ -10,6 +10,7 @@ function App() {
   const [query, setQuery] = useState('subject:unsubscribe');
   const [message, setMessage] = useState('');
   const [deletedEmails, setDeletedEmails] = useState([]);
+  const [totalDeletedEmails, setTotalDeletedEmails] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -21,7 +22,8 @@ function App() {
     socket.on("emailDeletedBatch", (data) => {
       console.log(`Received batch deletion event: ${data.count} emails deleted.`);
       setDeletedEmails(prevEmails => [...prevEmails, `Batch of ${data.count} emails deleted. Total: ${data.total}`]);
-    })
+      setTotalDeletedEmails(data.total);
+    });    
 
     socket.on("deletionStopped", (data) => {
       console.log("🛑 Received deletionStopped event");
