@@ -97,6 +97,12 @@ function App() {
         style={{ marginLeft: '1rem', backgroundColor: 'red', color: 'white' }}>
         {isDeleting ? "Deleting Promotions..." : "Delete Promotions Emails"}
       </button>
+      <button
+        onClick={() => deleteEmails('delete-updates')}
+        disabled={isDeleting}
+        style={{ marginLeft: '1rem', backgroundColor: 'blue', color: 'white' }}>
+        {isDeleting ? "Deleting Updates..." : "Delete Updates Emails"}
+      </button>
       <button onClick={stopDeletion} style={{ marginLeft: '1rem', backgroundColor: 'gray' }}>
         Stop Deletion
       </button>

@@ -111,6 +111,38 @@ async function continuousDeletePromotions() {
     }
 }
 
+// Function to continuously delete "Updates" emails
+async function continuousDeleteUpdate() {
+    while (deletionInProgress) {
+        try {
+            console.log("Fetching more Updates emails...");
+            const listResponse = await gmail.users.messages.list({ userId: 'me', q: 'category:updates' });
+
+            if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
+                console.log(`No more Updates emails found.`);
+                deletionInProgress = false;
+                return;
+            }
+
+            console.log(`Found ${listResponse.data.messages.length} Updates emails. Deleting...`);
+            const result = await deleteEmails(listResponse.data.messages);
+
+            if (!deletionInProgress) {
+                console.log("Stopping continuous deltion due to error.");
+                return;
+            }
+        } catch (error) {
+            if (error.code === 'ENOTFOUND') {
+                console.error("No internet connection detected. Stopping process.");
+                deletionInProgress = false;
+            } else {
+                console.error("Error fetching Updates emails:", error);
+                deletionInProgress = false;
+            }
+        }
+    }
+}
+
 // Reset deleted count every hour
 setInterval(() => {
     console.log("🔄 Resetting deleted emails count.");
@@ -159,6 +191,19 @@ app.post('/delete-promotions', async (req, res) => {
     deletionInProgress = true;
     continuousDeletePromotions();
     res.json({ message: "Started continuous deletion of Promotions emails." });
+});
+
+// Route to delete only "Updates" emails
+app.post('/delete-updates', async (req, res) => {
+    console.log(`Received request to delete Updates emails`);
+
+    if (deletionInProgress) {
+        return res.json({ message: "Deletion is already in progress. Please wait or stop the operation." });
+    }
+
+    deletionInProgress = true;
+    continuousDeleteUpdate();
+    res.json({ message: "Started continuous deletion of Updates emails." });
 });
 
 // Route to stop deletion manually
