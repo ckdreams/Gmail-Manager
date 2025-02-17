@@ -30,6 +30,7 @@ const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 let lastDeletionTime = 0; // Store last deletion timestamp
 const maxDeletesPerHour = 150; // Adjust based on observed quota behavior
+const BATCH_SIZE = 20; // Number of emails to delete per batch
 let deletedEmailsCount = 0;
 let deletionInProgress = false; // Track ongoing deletion operation
 
@@ -38,25 +39,28 @@ async function deleteEmails(messages) {
     console.log(`Starting deletion process for ${messages.length} emails...`);
     
     let deletedEmails = [];
-    for (let i = 0; i < messages.length; i++) {
+    for (let i = 0; i < messages.length; i+= BATCH_SIZE) {
         if (deletionInProgress === false) {
             console.log("❌ Deletion stopped by user.");
             return { message: "Deletion stopped by user.", deletedEmails };
         }
 
+        // Get a batch of emails to delete
+        const batch = messages.slice(i, i + BATCH_SIZE);
+        const batchIds = batch.map(email => email.id);
+
         try {
-            await gmail.users.messages.delete({
+            // Delete emails in batch
+            await Promise.all(batch.map(email => gmail.users.messages.delete({
                 userId: 'me',
-                id: messages[i].id,
-            });
-            deletedEmailsCount++;
-            deletedEmails.push(messages[i].id);
+                id: email.id
+            })));
 
-            console.log(`✅ Deleted email ID: ${messages[i].id} (Total: ${deletedEmailsCount})`);
+            deletedEmails.push(...batchIds);
+            console.log(`✅ Deleted ${batch.length} emails (Total: ${deletedEmails.length})`);
 
-            // Emit the deleted email ID to the frontend
-            console.log(`📡 Emitting emailDeleted event for ID: ${messages[i].id}`);
-            io.emit("emailDeleted", { id: messages[i].id });
+            // Emit the deleted email count to the frontend
+            io.emit("emailDeletedBatch", { count: batch.length, total: deletedEmails.length });
 
             // Delay between requests to avoid rate limits (500ms per request)
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -79,21 +83,21 @@ async function deleteEmails(messages) {
     return { message: `${deletedEmails.length} emails deleted successfully`, deletedEmails };
 }
 
-// Function to continuously delete "Promotions" emails
-async function continuousDeletePromotions() {
+// Function to continuously delete category emails
+async function continuousDelete(category) {
     while (deletionInProgress) {
         try {
-            console.log("Fetching more Promotions emails...");
-            const listResponse = await gmail.users.messages.list({ userId: 'me', q: 'category:promotions' });
+            console.log(`🔄 Fetching more ${category} emails...`);
+            const listResponse = await gmail.users.messages.list({ userId: 'me', q: `category:${category}` });
 
             if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
-                console.log(`📭 No more Promotions emails found.`);
+                console.log(`📭 No more ${category} emails found.`);
                 deletionInProgress = false;
                 return;
             }
 
-            console.log(`Found ${listResponse.data.messages.length} Promotions emails. Deleting...`);
-            const result = await deleteEmails(listResponse.data.messages);
+            console.log(`📋 Found ${listResponse.data.messages.length} ${category} emails. Deleting...`);
+            await deleteEmails(listResponse.data.messages);
 
             if (!deletionInProgress) {
                 console.log("Stopping continuous deletion due to error.");
@@ -104,39 +108,7 @@ async function continuousDeletePromotions() {
                 console.error("No internet connection detected. Stopping process.");
                 deletionInProgress = false;
             } else {
-                console.error("❌ Error fetching Promotions emails:", error);
-                deletionInProgress = false;
-            }
-        }
-    }
-}
-
-// Function to continuously delete "Updates" emails
-async function continuousDeleteUpdate() {
-    while (deletionInProgress) {
-        try {
-            console.log("Fetching more Updates emails...");
-            const listResponse = await gmail.users.messages.list({ userId: 'me', q: 'category:updates' });
-
-            if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
-                console.log(`No more Updates emails found.`);
-                deletionInProgress = false;
-                return;
-            }
-
-            console.log(`Found ${listResponse.data.messages.length} Updates emails. Deleting...`);
-            const result = await deleteEmails(listResponse.data.messages);
-
-            if (!deletionInProgress) {
-                console.log("Stopping continuous deltion due to error.");
-                return;
-            }
-        } catch (error) {
-            if (error.code === 'ENOTFOUND') {
-                console.error("No internet connection detected. Stopping process.");
-                deletionInProgress = false;
-            } else {
-                console.error("Error fetching Updates emails:", error);
+                console.error(`❌ Error fetching ${category} emails:`, error);
                 deletionInProgress = false;
             }
         }
@@ -189,7 +161,7 @@ app.post('/delete-promotions', async (req, res) => {
     }
 
     deletionInProgress = true;
-    continuousDeletePromotions();
+    continuousDelete("promotions");
     res.json({ message: "Started continuous deletion of Promotions emails." });
 });
 
@@ -202,7 +174,7 @@ app.post('/delete-updates', async (req, res) => {
     }
 
     deletionInProgress = true;
-    continuousDeleteUpdate();
+    continuousDelete("updates");
     res.json({ message: "Started continuous deletion of Updates emails." });
 });
 
