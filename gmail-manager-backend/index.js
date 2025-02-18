@@ -4,6 +4,8 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,7 +26,79 @@ const oauth2Client = new google.auth.OAuth2(
     process.env.REDIRECT_URI
 );
 
-oauth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
+app.get('/auth/check', (req, res) => {
+    const credentials = oauth2Client.credentials;
+    if (credentials && credentials.access_token) {
+        res.json({ isAuthenticated: true });
+    } else {
+        res.json({ isAuthenticated: false });
+    }
+});
+
+// Store tokens in a local file
+const TOKEN_STORAGE = path.join(__dirname, 'tokens.json');
+
+function saveUserToken(userId, tokens) {
+    let allTokens = {};
+    if (fs.existsSync(TOKEN_STORAGE)) {
+        allTokens = JSON.parse(fs.readFileSync(TOKEN_STORAGE, 'utf8'));
+    }
+    allTokens[userId] = tokens;
+    fs.writeFileSync(TOKEN_STORAGE, JSON.stringify(allTokens));
+}
+
+function loadUserToken(userId) {
+    if (fs.existsSync(TOKEN_STORAGE)) {
+        const allTokens = JSON.parse(fs.readFileSync(TOKEN_STORAGE, 'utf8'));
+        return allTokens[userId] || null;
+    }
+    return null;
+}
+
+// Generate OAuth login URL for any user
+app.get('/auth/google', (req, res) => {
+    const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: ['https://mail.google.com/'],
+        prompt: 'consent'
+    });
+    res.json({ url: authUrl });
+});
+
+// Handle OAuth callback after user logs in
+app.get('/auth/google/callback', async (req, res) => {
+    const code = req.query.code;
+    if (!code) {
+        return res.redirect("http://localhost:3000?error=missing_auth_code");
+    }
+
+    try {
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        // Get user’s email
+        const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
+        const userInfo = await oauth2.userinfo.get();
+        const userEmail = userInfo.data.email;
+
+        saveUserToken(userEmail, tokens);
+        console.log(`✅ User authenticated: ${userEmail}`);
+
+        // Redirect back with success flag
+        res.redirect("http://localhost:3000?auth=success");
+    } catch (error) {
+        console.error("❌ OAuth authentication failed:", error);
+        res.redirect("http://localhost:3000?error=auth_failed");
+    }
+});
+
+// Load tokens on server startup
+const savedTokens = loadUserToken();
+if (savedTokens) {
+    oauth2Client.setCredentials(savedTokens);
+} else {
+    console.log("⚠️ No saved tokens found. User needs to log in.");
+}
 
 const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 

@@ -7,11 +7,17 @@ const socket = io("http://localhost:3001", {
 });
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginMessage, setLoginMessage] = useState('');
   const [query, setQuery] = useState('subject:unsubscribe');
   const [message, setMessage] = useState('');
   const [deletedEmails, setDeletedEmails] = useState([]);
   const [totalDeletedEmails, setTotalDeletedEmails] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    checkAuthentication();
+  }, []);
 
   useEffect(() => {
     socket.on("emailDeleted", (data) => {
@@ -37,6 +43,33 @@ function App() {
       socket.off("deletionStopped");
     };
   }, []);
+
+  const checkAuthentication = async () => {
+    try {
+        const response = await fetch("http://localhost:3001/auth/check");
+        const data = await response.json();
+        setIsAuthenticated(data.isAuthenticated);
+
+        if (data.isAuthenticated) {
+            console.log("✅ User is authenticated.");
+        } else {
+            console.log("⚠️ User is NOT authenticated.");
+        }
+    } catch (error) {
+        console.error("❌ Authentication check failed:", error);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/auth/google");
+      const data = await response.json();
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Login failed:", error);
+      setLoginMessage("Failed to start Google login.");
+    }
+  };
 
   const deleteEmails = async (endpoint) => {
     setDeletedEmails([]); // Reset previous session data
@@ -88,6 +121,18 @@ function App() {
   return (
     <div style={{ padding: '2rem' }}>
       <h1>Gmail Bulk Email Deleter</h1>
+
+      {!isAuthenticated ? (
+        <div>
+          <button onClick={loginWithGoogle} style={{ backgroundColor: 'green', color: 'white', padding: '10px' }}>
+            Login with Google
+          </button>
+          {loginMessage && <p style={{ color: 'red' }}>{loginMessage}</p>}
+        </div>
+      ) : (
+        <p>✅ Logged in! You can now delete emails.</p>
+      )}
+
       <p>Enter a Gmail search query to target emails for deletion:</p>
       <input
         type="text"
