@@ -8,6 +8,7 @@ const socket = io("http://localhost:3001", {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [query, setQuery] = useState('subject:unsubscribe');
   const [message, setMessage] = useState('');
@@ -18,6 +19,12 @@ function App() {
   useEffect(() => {
     checkAuthentication();
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserEmail();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     socket.on("emailDeleted", (data) => {
@@ -43,6 +50,18 @@ function App() {
       socket.off("deletionStopped");
     };
   }, []);
+
+  const fetchUserEmail = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/auth/user');
+      const data = await response.json();
+      if (data.email) {
+        setUserEmail(data.email);
+      }
+    } catch (error) {
+      console.error('Error fetching user email:', error);
+    }
+  };
 
   const checkAuthentication = async () => {
     try {
@@ -130,7 +149,12 @@ function App() {
           {loginMessage && <p style={{ color: 'red' }}>{loginMessage}</p>}
         </div>
       ) : (
-        <p>✅ Logged in! You can now delete emails.</p>
+        <div>
+          <p>✅ Logged in! You can now delete emails.</p>
+          {isAuthenticated && userEmail && (
+            <p>Currently managing email: <strong>{userEmail}</strong></p>
+          )}
+        </div>
       )}
 
       <p>Enter a Gmail search query to target emails for deletion:</p>

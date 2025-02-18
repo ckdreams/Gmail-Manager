@@ -67,7 +67,24 @@ app.get('/auth/google', (req, res) => {
       ],
     });
     res.json({ url: authUrl });
-});  
+});
+
+app.get('/auth/user', async (req, res) => {
+    // Check if there's a valid access token in oauth2Client
+    if (!oauth2Client.credentials || !oauth2Client.credentials.access_token) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    try {
+        const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
+        const userInfo = await oauth2.userinfo.get();
+        // userInfo.data.email is the user's email
+        return res.json({ email: userInfo.data.email });
+    } catch (error) {
+        console.error("Error retrieving user info:", error);
+        return res.status(500).json({ error: 'Failed to retrieve user info' });
+    }
+});
 
 // Handle OAuth callback after user logs in
 app.get('/auth/google/callback', async (req, res) => {
