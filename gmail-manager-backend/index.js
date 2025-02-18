@@ -58,12 +58,16 @@ function loadUserToken(userId) {
 // Generate OAuth login URL for any user
 app.get('/auth/google', (req, res) => {
     const authUrl = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: ['https://mail.google.com/'],
-        prompt: 'consent'
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: [
+        'https://mail.google.com/',
+        'https://www.googleapis.com/auth/userinfo.email',
+        // or add more if you need them
+      ],
     });
     res.json({ url: authUrl });
-});
+});  
 
 // Handle OAuth callback after user logs in
 app.get('/auth/google/callback', async (req, res) => {
