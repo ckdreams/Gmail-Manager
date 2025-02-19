@@ -296,6 +296,19 @@ app.post('/delete-updates', async (req, res) => {
     res.json({ message: "Started continuous deletion of Updates emails." });
 });
 
+// Route to delete only "Social" emails
+app.post('/delete-social', async (req, res) => {
+    console.log(`Received request to delete Social emails`);
+
+    if (deletionInProgress) {
+        return res.json({ message: "Deletion is already in progress. Please wait or stop the operation." });
+    }
+
+    deletionInProgress = true;
+    continuousDelete("social");
+    res.json({ message: "Started continuous deletion of Social emails." });
+});
+
 // Route to stop deletion manually
 app.post('/stop-deletion', (req, res) => {
     deletionInProgress = false;

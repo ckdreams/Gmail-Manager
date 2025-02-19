@@ -1,6 +1,7 @@
 node_modules/
 .env
 .DS_STORE
+tokens.json
 
 /build
 /.next
