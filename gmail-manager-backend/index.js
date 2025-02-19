@@ -241,7 +241,18 @@ setInterval(() => {
 
 // Route to delete emails with logging
 app.post('/delete-emails', async (req, res) => {
-    console.log(`🔍 Received deletion request. Query: "${req.body.query || 'subject:unsubscribe'}"`);
+    // Use provided query or default
+    let query = re.body.query || 'subject:unsubscribe';
+
+    // Append exclusion filters if provided
+    if (req.body.excludeStarred) {
+        query += " -is:starred";
+    }
+    if (req.body.excludeImportant) {
+        query += " -is:important";
+    }
+
+    console.log(`🔍 Received deletion request. Final Query: "${query}"`);
 
     const currentTime = Date.now();
     if (currentTime - lastDeletionTime < 3600000 && deletedEmailsCount >= maxDeletesPerHour) {
@@ -251,12 +262,16 @@ app.post('/delete-emails', async (req, res) => {
     }
 
     try {
-        const query = req.body.query || 'subject:unsubscribe';
         const listResponse = await gmail.users.messages.list({ userId: 'me', q: query });
 
         if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
             console.log(`📭 No emails found matching query: "${query}".`);
             return res.json({ message: 'No emails found matching the query.' });
+        }
+
+        // Option to delete oldest emails first
+        if (req.body.orderOldest) {
+            listResponse.data.messages.reverse();
         }
 
         console.log(`📋 Found ${listResponse.data.messages.length} emails matching query. Proceeding with deletion...`);

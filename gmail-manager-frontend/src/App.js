@@ -11,6 +11,9 @@ function App() {
   const [userEmail, setUserEmail] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [query, setQuery] = useState('subject:unsubscribe');
+  const [excludeStarred, setExcludeStarred] = useState(false);
+  const [excludeImportant, setExcludeImportant] = useState(false);
+  const [orderOldest, setOrderOldest] = useState(false);
   const [message, setMessage] = useState('');
   const [deletedEmails, setDeletedEmails] = useState([]);
   const [totalDeletedEmails, setTotalDeletedEmails] = useState(0);
@@ -118,7 +121,11 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(endpoint === 'delete-emails' ? { query } : {}),
+        body: JSON.stringify(
+          endpoint === 'delete-emails'
+            ? { query, excludeStarred, excludeImportant, orderOldest }
+            : {}
+        ),
       });
 
       const data = await response.json();
@@ -194,6 +201,39 @@ function App() {
         style={{ width: '300px' }}
         disabled={disableUI}
       />
+
+      {/* Checkboxes to exclude sensitive emails */}
+      <div style={{ marginTop: '1rem' }}>
+        <h5>Filters</h5>
+        <label style={{ marginRight: '1rem' }}>
+          <input
+            type="checkbox"
+            checked={orderOldest}
+            onChange={(e) => setOrderOldest(e.target.checked)}
+            disabled={disableUI}
+          />
+          Delete Oldest First
+        </label>
+        <label style={{ marginRight: '1rem' }}>
+          <input
+            type="checkbox"
+            checked={excludeStarred}
+            onChange={(e) => setExcludeStarred(e.target.checked)}
+            disabled={disableUI}
+          />
+          Exclude Starred
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={excludeImportant}
+            onChange={(e) => setExcludeImportant(e.target.checked)}
+            disabled={disableUI}
+          />
+          Exclude Important
+        </label>
+      </div>
+
       <button onClick={() => deleteEmails('delete-emails')} disabled={disableUI} style={{ marginLeft: '1rem' }}>
         Delete Emails
       </button>
