@@ -90,6 +90,23 @@ function App() {
     }
   };
 
+  const logout = async () => {
+    try {
+      await fetch('http://localhost:3001/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      // Reset local state
+      setIsAuthenticated(false);
+      setUserEmail('');
+      setLoginMessage('');
+      setMessage('');
+      setDeletedEmails([]);
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   const deleteEmails = async (endpoint) => {
     setDeletedEmails([]); // Reset previous session data
     setMessage("Deleting emails...");
@@ -144,20 +161,29 @@ function App() {
     <div style={{ padding: '2rem' }}>
       <h1>Gmail Bulk Email Deleter</h1>
 
-      {!isAuthenticated ? (
+      <div>
+        <button
+          onClick={isAuthenticated ? logout: loginWithGoogle}
+          style={{
+            backgroundColor: isAuthenticated ? 'gray' : 'green',
+            color: 'white',
+            padding: '10px'
+          }}
+        >
+          {isAuthenticated ? 'Log Out' : 'Login with Google'}
+        </button>
+        {loginMessage && <p style={{ color: 'red' }}>{loginMessage}</p>}
+      </div>
+
+      {isAuthenticated ? (
         <div>
-          <button onClick={loginWithGoogle} style={{ backgroundColor: 'green', color: 'white', padding: '10px' }}>
-            Login with Google
-          </button>
-          {loginMessage && <p style={{ color: 'red' }}>{loginMessage}</p>}
-        </div>
-      ) : (
-        <div>
-          <p>✅ Logged in! You can now delete emails.</p>
-          {isAuthenticated && userEmail && (
+          <p>Logged in! You can now delete emails.</p>
+          {userEmail && (
             <p>Currently managing email: <strong>{userEmail}</strong></p>
           )}
         </div>
+      ) : (
+        <p>Please log in to manage your Gmail.</p>
       )}
 
       <p>Enter a Gmail search query to target emails for deletion:</p>

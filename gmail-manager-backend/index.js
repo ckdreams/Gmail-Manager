@@ -121,6 +121,28 @@ if (savedTokens) {
     console.log("⚠️ No saved tokens found. User needs to log in.");
 }
 
+// Logout route
+app.post('/auth/logout', async (req, res) => {
+    try {
+        // Revoke token on Google if it exists
+        if (oauth2Client.credentials && oauth2Client.credentials.access_token) {
+            await oauth2Client.revokeCredentials();
+        }
+        // Clear in-memory credentials
+        oauth2Client.setCredentials(null);
+
+        // Optionally, remove token from persistent storage
+        if (fs.existsSync(TOKEN_STORAGE)) {
+            fs.unlinkSync(TOKEN_STORAGE);
+        }
+
+        res.json({ message: 'User logged out safely' });
+    } catch (error) {
+        console.error('Error logging out:', error);
+        res.status(500).json({ error: 'Failed to log out safely' });
+    }
+});
+
 const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 let lastDeletionTime = 0; // Store last deletion timestamp
