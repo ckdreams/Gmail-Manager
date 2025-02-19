@@ -137,6 +137,9 @@ function App() {
     }
   };
 
+  // Disble UI elements is user is not authenticated or deletion is in progress
+  const disableUI = !isAuthenticated || isDeleting;
+
   return (
     <div style={{ padding: '2rem' }}>
       <h1>Gmail Bulk Email Deleter</h1>
@@ -163,24 +166,24 @@ function App() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         style={{ width: '300px' }}
-        disabled={isDeleting}
+        disabled={disableUI}
       />
-      <button onClick={() => deleteEmails('delete-emails')} disabled={isDeleting} style={{ marginLeft: '1rem' }}>
+      <button onClick={() => deleteEmails('delete-emails')} disabled={disableUI} style={{ marginLeft: '1rem' }}>
         Delete Emails
       </button>
       <button 
         onClick={() => deleteEmails('delete-promotions')} 
-        disabled={isDeleting} 
+        disabled={disableUI} 
         style={{ marginLeft: '1rem', backgroundColor: 'red', color: 'white' }}>
-        {isDeleting ? "Deleting Promotions..." : "Delete Promotions Emails"}
+        {disableUI ? "Deleting Promotions..." : "Delete Promotions Emails"}
       </button>
       <button
         onClick={() => deleteEmails('delete-updates')}
-        disabled={isDeleting}
+        disabled={disableUI}
         style={{ marginLeft: '1rem', backgroundColor: 'blue', color: 'white' }}>
-        {isDeleting ? "Deleting Updates..." : "Delete Updates Emails"}
+        {disableUI ? "Deleting Updates..." : "Delete Updates Emails"}
       </button>
-      <button onClick={stopDeletion} style={{ marginLeft: '1rem', backgroundColor: 'gray' }}>
+      <button onClick={stopDeletion} disabled={disableUI} style={{ marginLeft: '1rem', backgroundColor: 'gray' }}>
         Stop Deletion
       </button>
       
