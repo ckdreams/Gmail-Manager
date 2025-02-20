@@ -276,6 +276,26 @@ async function continuousDeleteGeneral(query, orderOldest) {
     return { message: `Finished deleting emails. Total deleted: ${totalDeleted}` };
 }
 
+// Fetch custom Labels
+app.get('/labels', async (req, res) => {
+    try {
+        // Verify authentication first
+        if (!oauth2Client.credentials || !oauth2Client.credentials.access_token) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        // Call the API to list Labels
+        const response = await gmail.users.labels.list({ userId: 'me' });
+        const labels = response.data.labels || [];
+
+        // Return Labels to frontend client
+        res.json(labels);
+    } catch (error) {
+        console.error("Error fetching labels:", error);
+        res.status(500).json({ error: 'Failed to fetch labels' });
+    }
+});
+
 // Route to delete emails with logging
 app.post('/delete-emails', async (req, res) => {
     if (deletionInProgress) {
@@ -292,6 +312,13 @@ app.post('/delete-emails', async (req, res) => {
     }
     if (req.body.excludeImportant) {
         query += " -is:important";
+    }
+
+    // Exclusions from custom Labels
+    if (req.body.excludedLabels && Array.isArray(req.body.excludedLabels)) {
+        req.body.excludedLabels.forEach(labelId => {
+            query += ` -label:${labelId}`;
+        });
     }
 
     console.log(`🔍 Received deletion request. Final Query: "${query}"`);

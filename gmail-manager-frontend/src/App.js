@@ -11,6 +11,8 @@ function App() {
   const [userEmail, setUserEmail] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
   const [query, setQuery] = useState('');
+  const [labels, setLabels] = useState([]); // All Labels fetched from Gmail
+  const [excludedLabels, setExcludedLabels] = useState({}); // Track Labels to exclude in deletion
   const [excludeStarred, setExcludeStarred] = useState(true);
   const [excludeImportant, setExcludeImportant] = useState(true);
   const [orderOldest, setOrderOldest] = useState(false);
@@ -26,6 +28,7 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserEmail();
+      fetchLabels();
     }
   }, [isAuthenticated]);
 
@@ -63,6 +66,16 @@ function App() {
       }
     } catch (error) {
       console.error('Error fetching user email:', error);
+    }
+  };
+
+  const fetchLabels = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/labels');
+      const data = await response.json();
+      setLabels(data);
+    } catch (error) {
+      console.error('Error fetching Labels:', error);
     }
   };
 
@@ -123,7 +136,13 @@ function App() {
         },
         body: JSON.stringify(
           endpoint === 'delete-emails'
-            ? { query, excludeStarred, excludeImportant, orderOldest }
+            ? { 
+                query, 
+                excludeStarred, 
+                excludeImportant, 
+                orderOldest, 
+                excludedLabels: Object.keys(excludedLabels).filter(key => excludedLabels[key])
+              }
             : {}
         ),
       });
@@ -232,6 +251,32 @@ function App() {
           />
           Exclude Important
         </label>
+      </div>
+
+      {/* Custom Labels checkboxes*/}
+      <div>
+        <h5>Labels to exclude</h5>
+        {labels
+          .filter(label => label.type === "user")
+          .map(label => (
+            <div key={label.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!excludedLabels[label.id]}
+                  onChange={(e) => {
+                    setExcludedLabels(prev => ({
+                      ...prev,
+                      [label.id]: e.target.checked
+                    }));
+                  }}
+                  disabled={disableUI}
+                />
+                {label.name}
+              </label>
+            </div>
+          ))
+        }
       </div>
 
       <button onClick={() => deleteEmails('delete-emails')} disabled={disableUI} style={{ marginLeft: '1rem' }}>
