@@ -26,15 +26,6 @@ const oauth2Client = new google.auth.OAuth2(
     process.env.REDIRECT_URI
 );
 
-app.get('/auth/check', (req, res) => {
-    const credentials = oauth2Client.credentials;
-    if (credentials && credentials.access_token) {
-        res.json({ isAuthenticated: true });
-    } else {
-        res.json({ isAuthenticated: false });
-    }
-});
-
 // Store tokens in a local file
 const TOKEN_STORAGE = path.join(__dirname, 'tokens.json');
 
@@ -53,6 +44,14 @@ function loadUserToken(userId) {
         return allTokens[userId] || null;
     }
     return null;
+}
+
+// Load tokens on server startup
+const savedTokens = loadUserToken("defaultUser");
+if (savedTokens) {
+    oauth2Client.setCredentials(savedTokens);
+} else {
+    console.log("⚠️ No saved tokens found. User needs to log in.");
 }
 
 // Generate OAuth login URL for any user
@@ -86,6 +85,18 @@ app.get('/auth/user', async (req, res) => {
     }
 });
 
+app.get('/auth/check', (req, res) => {
+    // If credentials are not present in memory, load them from file.
+    if (!oauth2Client.credentials || !oauth2Client.credentials.access_token) {
+        const saved = loadUserToken("defaultUser");
+        if (saved) {
+            oauth2Client.setCredentials(saved);
+        }
+    }
+    const credentials = oauth2Client.credentials;
+    res.json({ isAuthenticated: !!(credentials && credentials.access_token) });
+});
+
 // Handle OAuth callback after user logs in
 app.get('/auth/google/callback', async (req, res) => {
     const code = req.query.code;
@@ -102,7 +113,7 @@ app.get('/auth/google/callback', async (req, res) => {
         const userInfo = await oauth2.userinfo.get();
         const userEmail = userInfo.data.email;
 
-        saveUserToken(userEmail, tokens);
+        saveUserToken("defaultUser", tokens);
         console.log(`✅ User authenticated: ${userEmail}`);
 
         // Redirect back with success flag
@@ -112,14 +123,6 @@ app.get('/auth/google/callback', async (req, res) => {
         res.redirect("http://localhost:3000?error=auth_failed");
     }
 });
-
-// Load tokens on server startup
-const savedTokens = loadUserToken();
-if (savedTokens) {
-    oauth2Client.setCredentials(savedTokens);
-} else {
-    console.log("⚠️ No saved tokens found. User needs to log in.");
-}
 
 // Logout route
 app.post('/auth/logout', async (req, res) => {
