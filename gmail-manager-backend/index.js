@@ -150,6 +150,7 @@ const maxDeletesPerHour = 150; // Adjust based on observed quota behavior
 const BATCH_SIZE = 20; // Number of emails to delete per batch
 let totalDeletedEmails = 0; // Keep count persistent across deletions
 let deletionInProgress = false; // Track ongoing deletion operation
+let deletedEmailsCount = 0;
 
 // Function to delete emails in batches with delay
 async function deleteEmails(messages) {
@@ -241,8 +242,13 @@ setInterval(() => {
 
 // Route to delete emails with logging
 app.post('/delete-emails', async (req, res) => {
+    if (deletionInProgress) {
+        return res.json({ message: "Deletion is already in progress. Please wait or stop the operation." });
+    }
+    deletionInProgress = true;
+
     // Use provided query or default
-    let query = re.body.query || 'subject:unsubscribe';
+    let query = req.body.query || '';
 
     // Append exclusion filters if provided
     if (req.body.excludeStarred) {

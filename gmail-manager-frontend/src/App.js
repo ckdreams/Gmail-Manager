@@ -10,9 +10,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [loginMessage, setLoginMessage] = useState('');
-  const [query, setQuery] = useState('subject:unsubscribe');
-  const [excludeStarred, setExcludeStarred] = useState(false);
-  const [excludeImportant, setExcludeImportant] = useState(false);
+  const [query, setQuery] = useState('');
+  const [excludeStarred, setExcludeStarred] = useState(true);
+  const [excludeImportant, setExcludeImportant] = useState(true);
   const [orderOldest, setOrderOldest] = useState(false);
   const [message, setMessage] = useState('');
   const [deletedEmails, setDeletedEmails] = useState([]);
