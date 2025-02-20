@@ -255,7 +255,7 @@ function App() {
         style={{ marginLeft: '1rem', backgroundColor: 'purple', color: 'white' }}>
         {disableUI ? "Deleting Social..." : "Delete Social Emails"}
       </button>
-      <button onClick={stopDeletion} disabled={disableUI} style={{ marginLeft: '1rem', backgroundColor: 'gray' }}>
+      <button onClick={stopDeletion} disabled={!isAuthenticated} style={{ marginLeft: '1rem', backgroundColor: 'gray' }}>
         Stop Deletion
       </button>
       

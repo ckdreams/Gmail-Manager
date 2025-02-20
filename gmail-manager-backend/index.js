@@ -218,6 +218,12 @@ async function continuousDelete(category) {
             console.log(`📋 Found ${listResponse.data.messages.length} ${category} emails. Deleting...`);
             await deleteEmails(listResponse.data.messages);
 
+            // If user stopped the deletion, break the loop
+            if (result.message === "Deletion stopped by user.") {
+                console.log("Deletion fully stopped by user (exiting loop).");
+                break;
+            }
+
             if (!deletionInProgress) {
                 console.log("Stopping continuous deletion due to error.");
                 return;
@@ -240,6 +246,33 @@ setInterval(() => {
     deletedEmailsCount = 0;
 }, 3600000); // 1 hour
 
+// Helper function to loop fetch and delete emails
+async function continuousDeleteGeneral(query, orderOldest) {
+    let totalDeleted = 0;
+    while (true) {
+        const listResponse = await gmail.users.messages.list({ userId: 'me', q: query });
+        if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
+            console.log(`No more emails found matching query: "${query}`);
+            break;
+        }
+        // If user wants to delete the oldest emails first, revers this batch.
+        if (orderOldest) {
+            listResponse.data.messages.reverse();
+        }
+        const deletionResult = await deleteEmails(listResponse.data.messages);
+
+        // If user manually stopped deletion, break out so it doesn't loop deleteEmails.
+        if (deletionResult.message === "Deletion stopped by user.") {
+            console.log("Deletion fully stopped by user (exiting loop).");
+            break;
+        }
+
+        totalDeleted += deletionResult.deletedEmails.length;
+        console.log(`Deleted batch. Total deleted so far: ${totalDeleted}`);
+    }
+    return { message: `Finished deleting emails. Total deleted: ${totalDeleted}` };
+}
+
 // Route to delete emails with logging
 app.post('/delete-emails', async (req, res) => {
     if (deletionInProgress) {
@@ -260,33 +293,14 @@ app.post('/delete-emails', async (req, res) => {
 
     console.log(`🔍 Received deletion request. Final Query: "${query}"`);
 
-    const currentTime = Date.now();
-    if (currentTime - lastDeletionTime < 3600000 && deletedEmailsCount >= maxDeletesPerHour) {
-        const nextAvailableTime = new Date(lastDeletionTime + 3600000).toLocaleTimeString();
-        console.log(`⏳ Rate limit exceeded. Next batch at ${nextAvailableTime}.`);
-        return res.json({ message: `Rate limit exceeded. Next batch at ${nextAvailableTime}.` });
-    }
-
     try {
-        const listResponse = await gmail.users.messages.list({ userId: 'me', q: query });
-
-        if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
-            console.log(`📭 No emails found matching query: "${query}".`);
-            return res.json({ message: 'No emails found matching the query.' });
-        }
-
-        // Option to delete oldest emails first
-        if (req.body.orderOldest) {
-            listResponse.data.messages.reverse();
-        }
-
-        console.log(`📋 Found ${listResponse.data.messages.length} emails matching query. Proceeding with deletion...`);
-        const deletionResult = await deleteEmails(listResponse.data.messages);
-
-        lastDeletionTime = Date.now();
+        // Continuously delete emails matching the query
+        const deletionResult = await continuousDeleteGeneral(query, req.body.orderOldest);
+        deletionInProgress = false;
         res.json(deletionResult);
     } catch (error) {
-        console.error('❌ Error during email deletion process:', error);
+        deletionInProgress = false;
+        console.error('Error during email deletion process:', error);
         res.status(500).json({ error: 'Error deleting emails' });
     }
 });
