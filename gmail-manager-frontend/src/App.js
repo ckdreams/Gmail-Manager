@@ -129,22 +129,21 @@ function App() {
     setIsDeleting(true);
 
     try {
+      const selectedLabels = Object.keys(excludedLabels)
+        .filter((id) => excludedLabels[id])
+        .map((id) => {
+          const labelObj = labels.find((label) => label.id === id);
+          return labelObj ? labelObj.name : id;
+        });
+
+      const payload = endpoint === 'delete-emails'
+        ? { query, excludeStarred, excludeImportant, orderOldest, excludedLabels: selectedLabels }
+        : {};
+
       const response = await fetch(`http://localhost:3001/${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(
-          endpoint === 'delete-emails'
-            ? { 
-                query, 
-                excludeStarred, 
-                excludeImportant, 
-                orderOldest, 
-                excludedLabels: Object.keys(excludedLabels).filter(key => excludedLabels[key])
-              }
-            : {}
-        ),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

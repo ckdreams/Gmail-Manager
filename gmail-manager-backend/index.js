@@ -253,6 +253,7 @@ setInterval(() => {
 async function continuousDeleteGeneral(query, orderOldest) {
     let totalDeleted = 0;
     while (true) {
+        console.log(query);
         const listResponse = await gmail.users.messages.list({ userId: 'me', q: query });
         if (!listResponse.data.messages || listResponse.data.messages.length === 0) {
             console.log(`No more emails found matching query: "${query}`);
@@ -316,8 +317,8 @@ app.post('/delete-emails', async (req, res) => {
 
     // Exclusions from custom Labels
     if (req.body.excludedLabels && Array.isArray(req.body.excludedLabels)) {
-        req.body.excludedLabels.forEach(labelId => {
-            query += ` -label:${labelId}`;
+        req.body.excludedLabels.forEach(labelName => {
+            query += ` -label:${labelName}`;
         });
     }
 
