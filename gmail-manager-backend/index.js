@@ -156,7 +156,7 @@ let deletionInProgress = false; // Track ongoing deletion operation
 let deletedEmailsCount = 0;
 
 // Function to delete emails in batches with delay
-async function deleteEmails(messages) {
+async function deleteEmails(messages, moveToTrash) {
     console.log(`Starting deletion process for ${messages.length} emails...`);
     
     let deletedEmails = [];
@@ -171,11 +171,18 @@ async function deleteEmails(messages) {
         const batchIds = batch.map(email => email.id);
 
         try {
-            // Delete emails in batch
-            await Promise.all(batch.map(email => gmail.users.messages.delete({
-                userId: 'me',
-                id: email.id
-            })));
+            // Move to Trash or permanently delete
+            if (moveToTrash) {
+                await Promise.all(batch.map(email => gmail.users.messages.trash({
+                    userId: 'me',
+                    id: email.id
+                })));
+            } else {
+                await Promise.all(batch.map(email => gmail.users.messages.delete({
+                    userId: 'me',
+                    id: email.id
+                })));
+            }
 
             deletedEmails.push(...batchIds);
             totalDeletedEmails += batch.length; // Accumulate deleted count
@@ -249,8 +256,8 @@ setInterval(() => {
     deletedEmailsCount = 0;
 }, 3600000); // 1 hour
 
-// Helper function to loop fetch and delete emails
-async function continuousDeleteGeneral(query, orderOldest) {
+// Helper function to loop fetch and delete emails or move to Trash
+async function continuousDeleteGeneral(query, orderOldest, moveToTrash) {
     let totalDeleted = 0;
     while (true) {
         console.log(query);
@@ -263,7 +270,7 @@ async function continuousDeleteGeneral(query, orderOldest) {
         if (orderOldest) {
             listResponse.data.messages.reverse();
         }
-        const deletionResult = await deleteEmails(listResponse.data.messages);
+        const deletionResult = await deleteEmails(listResponse.data.messages, moveToTrash);
 
         // If user manually stopped deletion, break out so it doesn't loop deleteEmails.
         if (deletionResult.message === "Deletion stopped by user.") {
@@ -324,9 +331,11 @@ app.post('/delete-emails', async (req, res) => {
 
     console.log(`🔍 Received deletion request. Final Query: "${query}"`);
 
+    const moveToTrash = req.body.moveToTrash || false;
+
     try {
         // Continuously delete emails matching the query
-        const deletionResult = await continuousDeleteGeneral(query, req.body.orderOldest);
+        const deletionResult = await continuousDeleteGeneral(query, req.body.orderOldest, moveToTrash);
         deletionInProgress = false;
         res.json(deletionResult);
     } catch (error) {

@@ -16,6 +16,7 @@ function App() {
   const [excludeStarred, setExcludeStarred] = useState(true);
   const [excludeImportant, setExcludeImportant] = useState(true);
   const [orderOldest, setOrderOldest] = useState(false);
+  const [moveToTrash, setMoveToTrash] = useState(false);
   const [message, setMessage] = useState('');
   const [deletedEmails, setDeletedEmails] = useState([]);
   const [totalDeletedEmails, setTotalDeletedEmails] = useState(0);
@@ -136,8 +137,9 @@ function App() {
           return labelObj ? labelObj.name : id;
         });
 
+      // Final request to delete with exclusion, or move to Trash
       const payload = endpoint === 'delete-emails'
-        ? { query, excludeStarred, excludeImportant, orderOldest, excludedLabels: selectedLabels }
+        ? { query, excludeStarred, excludeImportant, orderOldest, excludedLabels: selectedLabels, moveToTrash }
         : {};
 
       const response = await fetch(`http://localhost:3001/${endpoint}`, {
@@ -231,6 +233,15 @@ function App() {
             disabled={disableUI}
           />
           Delete Oldest First
+        </label>
+        <label style={{ marginRight: '1rem' }}>
+          <input
+            type="checkbox"
+            checked={moveToTrash}
+            onChange={(e) => setMoveToTrash(e.target.checked)}
+            disabled={disableUI}
+          />
+          Move to Trash
         </label>
         <label style={{ marginRight: '1rem' }}>
           <input
