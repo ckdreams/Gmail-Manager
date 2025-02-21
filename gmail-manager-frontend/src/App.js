@@ -140,7 +140,7 @@ function App() {
       // Final request to delete with exclusion, or move to Trash
       const payload = endpoint === 'delete-emails'
         ? { query, excludeStarred, excludeImportant, orderOldest, excludedLabels: selectedLabels, moveToTrash }
-        : {};
+        : { moveToTrash, orderOldest };
 
       const response = await fetch(`http://localhost:3001/${endpoint}`, {
         method: 'POST',
@@ -162,6 +162,29 @@ function App() {
     } catch (error) {
       console.error('Error deleting emails:', error);
       setMessage('Error deleting emails');
+      setIsDeleting(false);
+    }
+  };
+
+  const emptyTrash = async () => {
+    setDeletedEmails([]);
+    setMessage("Emptying Trash...");
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch("http://localhost:3001/empty-trash", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      setMessage(data.message);
+      setIsDeleting(false);
+      if (data.deletedEmails) {
+        setDeletedEmails(data.deletedEmails);
+      }
+    } catch (error) {
+      console.error("Error emptying Trash:", error);
+      setMessage("Error emptying Trash");
       setIsDeleting(false);
     }
   };
@@ -292,6 +315,12 @@ function App() {
       <button onClick={() => deleteEmails('delete-emails')} disabled={disableUI} style={{ marginLeft: '1rem' }}>
         Delete Emails
       </button>
+      <button
+        onClick={emptyTrash}
+        disabled={disableUI}
+        style={{ marginLeft: '1rem', backgroundColor: 'black', color: 'white' }}>
+          {disableUI ? "Emptying Trash..." : "Empty Trash"}
+        </button>
       <button 
         onClick={() => deleteEmails('delete-promotions')} 
         disabled={disableUI} 

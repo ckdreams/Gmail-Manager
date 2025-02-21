@@ -345,6 +345,25 @@ app.post('/delete-emails', async (req, res) => {
     }
 });
 
+// Route to empty Trash
+app.post('/empty-trash', async (req, res) => {
+    console.log("Received request to permanently delete all emails in Trash");
+    if (deletionInProgress) {
+        return res.json({ message: "Operation is already in progress. Please wait or stop the operation." });
+    }
+    deletionInProgress = true;
+    try {
+        // Use the query "in:trash" to target emails in Trash and permanently delete them
+        const deletionResult = await continuousDeleteGeneral("in:trash", false, false);
+        deletionInProgress = false;
+        res.json(deletionResult);
+    } catch (error) {
+        deletionInProgress = false;
+        console.error("Error while emtying Trash:", error);
+        res.status(500).json({ error: "Error emptying Trash" });
+    }
+});
+
 // Route to delete only "Promotions" emails
 app.post('/delete-promotions', async (req, res) => {
     console.log(`🔍 Received request to delete Promotions emails`);
@@ -354,8 +373,11 @@ app.post('/delete-promotions', async (req, res) => {
     }
 
     deletionInProgress = true;
-    continuousDelete("promotions");
-    res.json({ message: "Started continuous deletion of Promotions emails." });
+    const moveToTrash = req.body.moveToTrash || false;
+    const orderOldest = req.body.orderOldest || false;
+    const deletionResult = await continuousDeleteGeneral("category:promotions", orderOldest, moveToTrash);
+    deletionInProgress = false;
+    res.json(deletionResult);
 });
 
 // Route to delete only "Updates" emails
@@ -367,8 +389,11 @@ app.post('/delete-updates', async (req, res) => {
     }
 
     deletionInProgress = true;
-    continuousDelete("updates");
-    res.json({ message: "Started continuous deletion of Updates emails." });
+    const moveToTrash = req.body.moveToTrash || false;
+    const orderOldest = req.body.orderOldest || false;
+    const deletionResult = await continuousDeleteGeneral("category:updates", orderOldest, moveToTrash);
+    deletionInProgress = false;
+    res.json(deletionResult);
 });
 
 // Route to delete only "Social" emails
@@ -380,8 +405,11 @@ app.post('/delete-social', async (req, res) => {
     }
 
     deletionInProgress = true;
-    continuousDelete("social");
-    res.json({ message: "Started continuous deletion of Social emails." });
+    const moveToTrash = req.body.moveToTrash || false;
+    const orderOldest = req.body.orderOldest || false;
+    const deletionResult = await continuousDeleteGeneral("category:social", orderOldest, moveToTrash);
+    deletionInProgress = false;
+    res.json(deletionResult);
 });
 
 // Route to stop deletion manually
